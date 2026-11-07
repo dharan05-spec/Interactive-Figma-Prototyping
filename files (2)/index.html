@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Prototype</title>
+  <style>
+    :root {
+      --primary: #4338CA; --primary-hover: #3730A3; --primary-50: #EEF2FF;
+      --text: #111827; --muted: #4B5563; --border: #E5E7EB; --bg: #F9FAFB; --white: #FFFFFF;
+      --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, system-ui, sans-serif; background: #E5E7EB; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; color: var(--text); }
+
+    .device { width: 390px; height: 844px; background: var(--white); border-radius: 36px; border: 10px solid #111827; overflow: hidden; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+    .status { height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; font-size: 13px; font-weight: 600; }
+
+    /* Screens: Smart-Animate-style slide transitions */
+    .screen { position: absolute; top: 44px; bottom: 0; left: 0; right: 0; background: var(--white); transition: transform 0.45s var(--ease), opacity 0.35s var(--ease); display: flex; flex-direction: column; }
+    .screen.is-off-right { transform: translateX(100%); opacity: 0; pointer-events: none; }
+    .screen.is-off-left { transform: translateX(-30%); opacity: 0; pointer-events: none; }
+    .screen-body { padding: 8px 20px 20px; flex: 1; overflow-y: auto; }
+
+    h1 { font-size: 24px; font-weight: 700; margin: 8px 0 6px; }
+    h2 { font-size: 17px; font-weight: 600; margin: 20px 0 10px; }
+    .sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 20px; }
+    .icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--white); cursor: pointer; font-size: 16px; transition: background 0.2s, transform 0.2s var(--ease); }
+    .icon-btn:hover { background: var(--primary-50); transform: scale(1.06); }
+    .icon-btn:active { transform: scale(0.95); }
+
+    .btn { width: 100%; height: 50px; border-radius: 12px; border: none; background: var(--primary); color: #fff; font: 600 16px Inter, sans-serif; cursor: pointer; transition: background 0.2s, transform 0.15s var(--ease), box-shadow 0.2s; }
+    .btn:hover { background: var(--primary-hover); box-shadow: 0 8px 18px rgba(67,56,202,0.28); }
+    .btn:active { transform: scale(0.98); }
+    .btn-ghost { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); margin-top: 10px; }
+    .btn-ghost:hover { background: var(--primary-50); box-shadow: none; }
+
+    .card { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; cursor: pointer; transition: transform 0.25s var(--ease), border-color 0.2s, box-shadow 0.25s; }
+    .card:hover { transform: translateY(-2px); border-color: #A5B4FC; box-shadow: 0 8px 20px rgba(17,24,39,0.08); }
+    .thumb { width: 56px; height: 56px; border-radius: 12px; background: var(--primary-50); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+    .card strong { display: block; font-size: 15px; margin-bottom: 2px; }
+    .card span { font-size: 13px; color: var(--muted); }
+
+    /* Overlay menu */
+    .overlay { position: absolute; inset: 0; background: rgba(17,24,39,0.45); opacity: 0; pointer-events: none; transition: opacity 0.3s var(--ease); z-index: 10; }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+    .menu-panel { position: absolute; top: 0; left: 0; bottom: 0; width: 78%; background: var(--white); padding: 56px 24px 24px; transform: translateX(-100%); transition: transform 0.35s var(--ease); z-index: 11; }
+    .menu-panel.open { transform: translateX(0); }
+    .menu-item { display: flex; align-items: center; gap: 12px; padding: 14px 8px; border-radius: 10px; font-weight: 500; font-size: 16px; cursor: pointer; transition: background 0.2s, padding 0.2s var(--ease); }
+    .menu-item:hover { background: var(--primary-50); padding-left: 14px; }
+
+    /* Modal slide-up */
+    .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--white); border-radius: 24px 24px 0 0; padding: 24px 20px 28px; transform: translateY(105%); transition: transform 0.4s var(--ease); z-index: 12; box-shadow: 0 -12px 30px rgba(0,0,0,0.12); }
+    .sheet.open { transform: translateY(0); }
+    .sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+
+    /* Toggle switch micro-interaction */
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+    .toggle { position: relative; width: 50px; height: 30px; border-radius: 999px; background: #D1D5DB; border: none; cursor: pointer; transition: background 0.3s var(--ease); }
+    .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: transform 0.3s var(--ease); }
+    .toggle[aria-checked="true"] { background: var(--primary); }
+    .toggle[aria-checked="true"]::after { transform: translateX(20px); }
+
+    /* Button press feedback */
+    .pressed { animation: pulse 0.3s var(--ease); }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(0.96); } 100% { transform: scale(1); } }
+
+    .toast { position: absolute; left: 50%; bottom: 96px; transform: translate(-50%, 20px); background: var(--text); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s, transform 0.3s var(--ease); z-index: 20; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (prefers-reduced-motion: reduce) { * { transition-duration: 0.01ms !important; animation: none !important; } }
+  </style>
+</head>
+<body>
+
+<div class="device" id="device">
+  <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+
+  <!-- SCREEN 1: HOME -->
+  <section class="screen" id="home" data-screen="home">
+    <div class="topbar">
+      <button class="icon-btn" id="openMenu" aria-label="Open menu">☰</button>
+      <strong>Explore</strong>
+      <button class="icon-btn" aria-label="Notifications">🔔</button>
+    </div>
+    <div class="screen-body">
+      <h1>Good morning</h1>
+      <p class="sub">Three new items near you today.</p>
+      <div class="card" data-go="detail" tabindex="0"><div class="thumb">☕</div><div><strong>Riverside Coffee</strong><span>0.4 km · Open now</span></div></div>
+      <div class="card" data-go="detail" tabindex="0"><div class="thumb">🏋️</div><div><strong>Peak Fitness</strong><span>1.2 km · Classes today</span></div></div>
+      <div class="card" data-go="detail" tabindex="0"><div class="thumb">🍣</div><div><strong>Sakura Kitchen</strong><span>2.0 km · 25 min delivery</span></div></div>
+      <button class="btn" data-go="settings">Open settings</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 2: DETAIL -->
+  <section class="screen is-off-right" id="detail" data-screen="detail">
+    <div class="topbar">
+      <button class="icon-btn" data-back aria-label="Back">←</button>
+      <strong>Details</strong>
+      <button class="icon-btn" id="openSheet" aria-label="Book">＋</button>
+    </div>
+    <div class="screen-body">
+      <div style="height:200px;border-radius:18px;background:var(--primary-50);display:flex;align-items:center;justify-content:center;font-size:64px;">☕</div>
+      <h1 style="margin-top:16px;">Riverside Coffee</h1>
+      <p class="sub">★ 4.8 (512 reviews) · Open until 9 PM</p>
+      <p class="sub" style="color:var(--text);">Single-origin espresso, fresh pastries, and a quiet back room for work or study.</p>
+      <button class="btn" id="bookBtn">Book a table</button>
+      <button class="btn btn-ghost" data-back>Back to explore</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 3: SETTINGS -->
+  <section class="screen is-off-right" id="settings" data-screen="settings">
+    <div class="topbar">
+      <button class="icon-btn" data-back aria-label="Back">←</button>
+      <strong>Settings</strong>
+      <span style="width:40px"></span>
+    </div>
+    <div class="screen-body">
+      <h2>Notifications</h2>
+      <div class="row"><span>Push alerts</span><button class="toggle" role="switch" aria-checked="true" aria-label="Push alerts"></button></div>
+      <div class="row"><span>Email digest</span><button class="toggle" role="switch" aria-checked="false" aria-label="Email digest"></button></div>
+      <div class="row"><span>Offers near me</span><button class="toggle" role="switch" aria-checked="true" aria-label="Offers near me"></button></div>
+      <h2>Privacy</h2>
+      <div class="row"><span>Share location</span><button class="toggle" role="switch" aria-checked="false" aria-label="Share location"></button></div>
+      <button class="btn" style="margin-top:24px;" id="saveBtn">Save changes</button>
+    </div>
+  </section>
+
+  <!-- OVERLAY MENU -->
+  <div class="overlay" id="overlay"></div>
+  <nav class="menu-panel" id="menu" aria-label="Menu">
+    <div class="menu-item" data-go="home">🏠 Explore</div>
+    <div class="menu-item" data-go="detail">☕ Saved places</div>
+    <div class="menu-item" data-go="settings">⚙️ Settings</div>
+    <div class="menu-item" id="closeMenu" style="color:var(--muted);margin-top:24px;">Close</div>
+  </nav>
+
+  <!-- MODAL SHEET -->
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-handle"></div>
+    <h2 id="sheetTitle" style="margin-top:0;">Pick a time</h2>
+    <p class="sub">Riverside Coffee · Today</p>
+    <div class="card" tabindex="0"><div class="thumb">🕘</div><div><strong>9:00 AM</strong><span>Available</span></div></div>
+    <div class="card" tabindex="0"><div class="thumb">🕛</div><div><strong>12:00 PM</strong><span>Available</span></div></div>
+    <button class="btn" id="confirmBtn">Confirm booking</button>
+    <button class="btn btn-ghost" id="closeSheet">Cancel</button>
+  </div>
+
+  <div class="toast" id="toast">Booking confirmed</div>
+</div>
+
+<script>
+  const screens = ['home', 'detail', 'settings'];
+  let current = 'home';
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  // Smart-Animate-style transition between screens
+  function go(name) {
+    if (name === current) return closeAll();
+    const from = $('#' + current), to = $('#' + name);
+    const fromIndex = screens.indexOf(current), toIndex = screens.indexOf(name);
+    if (toIndex > fromIndex) {
+      from.classList.add('is-off-left');
+      to.classList.remove('is-off-right', 'is-off-left');
+    } else {
+      from.classList.add('is-off-right');
+      to.classList.remove('is-off-left', 'is-off-right');
+    }
+    current = name;
+    closeAll();
+  }
+
+  function closeAll() {
+    $('#overlay').classList.remove('open');
+    $('#menu').classList.remove('open');
+    $('#sheet').classList.remove('open');
+  }
+
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function press(el) { el.classList.remove('pressed'); void el.offsetWidth; el.classList.add('pressed'); }
+
+  // Navigation triggers (On Click)
+  document.addEventListener('click', (e) => {
+    const go_el = e.target.closest('[data-go]');
+    if (go_el) { press(go_el); go(go_el.dataset.go); }
+    if (e.target.closest('[data-back]')) go('home');
+  });
+
+  // Overlay menu
+  $('#openMenu').addEventListener('click', () => { $('#overlay').classList.add('open'); $('#menu').classList.add('open'); });
+  $('#overlay').addEventListener('click', closeAll);
+  $('#closeMenu').addEventListener('click', closeAll);
+
+  // Modal slide-up
+  $('#openSheet').addEventListener('click', () => $('#sheet').classList.add('open'));
+  $('#bookBtn').addEventListener('click', () => $('#sheet').classList.add('open'));
+  $('#closeSheet').addEventListener('click', closeAll);
+  $('#confirmBtn').addEventListener('click', () => { closeAll(); toast('Booking confirmed'); });
+
+  // Toggle switches
+  $$('.toggle').forEach(t => t.addEventListener('click', () => {
+    t.setAttribute('aria-checked', String(t.getAttribute('aria-checked') !== 'true'));
+  }));
+
+  $('#saveBtn').addEventListener('click', () => toast('Settings saved'));
+
+  // Hover micro-interaction: card lift on keyboard focus too
+  $$('.card').forEach(c => c.addEventListener('keydown', e => { if (e.key === 'Enter') c.click(); }));
+</script>
+
+</body>
+</html>
